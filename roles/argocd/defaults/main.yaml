@@ -1,0 +1,2 @@
+---
+argocd_apps_repository: https://github.com/kymzky/argocd-homelab

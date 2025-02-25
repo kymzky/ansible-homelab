@@ -1,0 +1,37 @@
+---
+- name: Install packages
+  ansible.builtin.apt:
+    name:
+      - certbot
+      - python3-pyotp
+      - python3-bs4
+    update_cache: true
+  become: true
+
+- name: Clone strato-certbot repository
+  ansible.builtin.git:
+    repo: "https://github.com/Buxdehuda/strato-certbot.git"
+    dest: ~{{ ansible_user }}/strato-certbot
+    version: "{{ strato_certbot_version }}"
+
+- name: Copy strato-auth.json
+  ansible.builtin.template:
+    src: strato-auth.json.j2
+    dest: ~{{ ansible_user }}/strato-certbot/strato-auth.json
+    mode: "0644"
+
+- name: Generate Certbot command
+  ansible.builtin.command:
+    cmd: >
+      certbot -n {{ '--test-cert' if useTestCert }}
+      certonly --manual --preferred-challenges dns --agree-tos --email {{ mail }}
+      --manual-auth-hook "~{{ ansible_user }}/strato-certbot/auth-hook.py strato-auth.json"
+      --manual-cleanup-hook "~{{ ansible_user }}/strato-certbot/cleanup-hook.py strato-auth.json"
+      -d {{ domain }} -d *.{{ domain }}
+  register: certbot_output
+  become: true
+  changed_when: "'Certificate not yet due for renewal; no action taken.' not in certbot_output.stdout"
+  notify: Update certificate
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers

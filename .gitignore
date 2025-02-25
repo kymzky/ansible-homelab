@@ -1,0 +1,4 @@
+.vault-pass
+.DS_STORE
+/outputs/
+/ansible.cfg

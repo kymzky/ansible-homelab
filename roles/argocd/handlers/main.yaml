@@ -1,0 +1,22 @@
+---
+- name: Get initial password
+  become: true
+  ansible.builtin.shell: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+  changed_when: false
+  register: initial_password
+  listen: Initialize Argo CD
+
+- name: Login to Argo CD
+  ansible.builtin.command: argocd login argocd.{{ domain }} --username admin --password {{ initial_password.stdout }} --insecure --grpc-web
+  changed_when: false
+  listen: Initialize Argo CD
+
+- name: Change password
+  ansible.builtin.command: argocd account update-password --account admin --current-password {{ initial_password.stdout }} --new-password {{ argocd_password }}
+  changed_when: false
+  listen: Initialize Argo CD
+
+- name: Add apps repository to Argo CD
+  ansible.builtin.command: argocd app create apps --project default --repo {{ argocd_apps_repository }} --revision {{ argocd_apps_branch }} --path apps --values {{ argocd_values }} --dest-server https://kubernetes.default.svc --sync-policy automated --auto-prune --grpc-web
+  changed_when: false
+  listen: Initialize Argo CD

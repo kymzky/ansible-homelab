@@ -1,0 +1,27 @@
+[Unit]
+Description=Lightweight Kubernetes
+Documentation=https://k3s.io
+Wants=network-online.target
+After=network-online.target
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Type=notify
+EnvironmentFile=-/etc/default/%N
+EnvironmentFile=-/etc/sysconfig/%N
+EnvironmentFile=-/etc/systemd/system/k3s.service.env
+KillMode=process
+Delegate=yes
+LimitNOFILE=1048576
+LimitNPROC=infinity
+LimitCORE=infinity
+TasksMax=infinity
+TimeoutStartSec=0
+Restart=always
+RestartSec=5s
+ExecStartPre=-/sbin/modprobe br_netfilter
+ExecStartPre=-/sbin/modprobe overlay
+# svccontroller.k3s.cattle.io/enablelb=true ensures that the load balancer is only accessible via the control node (see https://docs.k3s.io/networking/networking-services#controlling-servicelb-node-selection)
+ExecStart=/usr/local/bin/k3s server --data-dir {{ k3s_server_location }} --token {{ token }} --node-label svccontroller.k3s.cattle.io/enablelb=true

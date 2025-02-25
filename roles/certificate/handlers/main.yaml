@@ -1,0 +1,95 @@
+---
+- name: Get numbered directories
+  ansible.builtin.find:
+    paths: /etc/letsencrypt/archive/
+    patterns: "{{ domain }}-[0-9]*"
+    file_type: directory
+    use_regex: true
+  become: true
+  register: numbered_dirs
+  listen: Update certificate
+
+- name: Determine highest directory number
+  ansible.builtin.set_fact:
+    highest_dir_number: "{{ numbered_dirs.files | map(attribute='path') |
+                      map('regex_replace', '^.*' + domain + '-([0-9]+)', '\\1') |
+                      sort | last | default(0) }}"
+  listen: Update certificate
+
+- name: Set archive_name
+  ansible.builtin.set_fact:
+    archive_name: "{% if highest_dir_number | int > 0 %}{{ domain }}-{{ highest_dir_number }}{% else %}{{ domain }}{% endif %}"
+  listen: Update certificate
+
+- name: Get numbered keys
+  ansible.builtin.find:
+    paths: /etc/letsencrypt/archive/{{ archive_name }}/
+    patterns: "privkey[0-9]*.pem"
+    file_type: file
+    use_regex: true
+  become: true
+  register: numbered_keys
+  listen: Update certificate
+
+- name: Determine highest key number
+  ansible.builtin.set_fact:
+    highest_key_number: "{{ numbered_keys.files | map(attribute='path') |
+                      map('regex_replace', '^.*privkey([0-9]+).pem', '\\1') |
+                      sort | last | default(0) }}"
+  listen: Update certificate
+
+- name: Set key_name
+  ansible.builtin.set_fact:
+    key_name: "{% if highest_key_number | int > 0 %}privkey{{ highest_key_number }}.pem{% else %}privkey.pem{% endif %}"
+  listen: Update certificate
+
+- name: Register key
+  ansible.builtin.slurp:
+    src: "/etc/letsencrypt/archive/{{ archive_name }}/{{ key_name }}"
+  become: true
+  register: key
+  listen: Update certificate
+
+- name: Get numbered certificates
+  ansible.builtin.find:
+    paths: /etc/letsencrypt/archive/{{ archive_name }}/
+    patterns: "fullchain[0-9]*.pem"
+    file_type: file
+    use_regex: true
+  become: true
+  register: numbered_certs
+  listen: Update certificate
+
+- name: Determine highest certificate number
+  ansible.builtin.set_fact:
+    highest_cert_number: "{{ numbered_certs.files | map(attribute='path') |
+                      map('regex_replace', '^.*fullchain([0-9]+).pem', '\\1') |
+                      sort | last | default(0) }}"
+  listen: Update certificate
+
+- name: Set cert_name
+  ansible.builtin.set_fact:
+    cert_name: "{% if highest_cert_number | int > 0 %}fullchain{{ highest_cert_number }}.pem{% else %}fullchain.pem{% endif %}"
+  listen: Update certificate
+
+- name: Register certificate
+  ansible.builtin.slurp:
+    src: "/etc/letsencrypt/archive/{{ archive_name }}/{{ cert_name }}"
+  become: true
+  register: crt
+  listen: Update certificate
+
+- name: Create tls-secret
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      type: kubernetes.io/tls
+      metadata:
+        name: tls-secret
+        namespace: kube-system
+      data:
+        tls.key: "{{ key['content'] }}"
+        tls.crt: "{{ crt['content'] }}"
+  listen: Update certificate

@@ -1,0 +1,28 @@
+---
+- name: Download and import Helm signing key
+  ansible.builtin.shell: set -o pipefail && curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: Ensure apt-transport-https is installed
+  ansible.builtin.package:
+    name: apt-transport-https
+    state: present
+
+- name: Generate Helm repository string
+  ansible.builtin.shell:
+    cmd: echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main"
+  register: helm_repo_string
+  changed_when: false
+
+- name: Add Helm stable repository
+  ansible.builtin.apt_repository:
+    repo: "{{ helm_repo_string.stdout }}"
+    state: present
+
+- name: Install Helm
+  ansible.builtin.apt:
+    name: helm
+    state: present
+    update_cache: true

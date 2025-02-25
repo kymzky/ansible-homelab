@@ -1,0 +1,30 @@
+---
+- name: Create sealed-secrets-key
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: sealed-secrets-key
+        namespace: kube-system
+      data:
+        tls.crt: "{{ lookup('file', 'sealed-secrets.crt') | b64encode }}"
+        tls.key: "{{ lookup('file', 'sealed-secrets.key') | b64encode }}"
+      type: Opaque
+# INFO: If a sealed-secrets-controller already exists it must be destroyed and re-created afterwards in order to read updated keys
+
+- name: Add sealed-secrets repo
+  kubernetes.core.helm_repository:
+    name: sealed-secrets
+    repo_url: "https://bitnami-labs.github.io/sealed-secrets"
+
+- name: Deploy sealed-secrets
+  kubernetes.core.helm:
+    name: sealed-secrets
+    chart_ref: sealed-secrets/sealed-secrets
+    chart_version: "{{ sealed_secrets_chart_version }}"
+    release_namespace: kube-system
+    update_repo_cache: true
+    values:
+      keyrenewperiod: "0"

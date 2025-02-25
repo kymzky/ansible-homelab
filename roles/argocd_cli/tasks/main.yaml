@@ -1,0 +1,6 @@
+---
+- name: Download Argo CD CLI
+  ansible.builtin.get_url:
+    url: "https://github.com/argoproj/argo-cd/releases/download/{{ argocd_cli_version }}/argocd-linux-{{ ansible_architecture | regex_replace('^x86_64$', 'amd64') }}"
+    dest: /usr/local/bin/argocd
+    mode: "0755"

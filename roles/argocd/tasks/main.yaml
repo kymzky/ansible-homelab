@@ -1,0 +1,45 @@
+---
+- name: Add argo repo
+  kubernetes.core.helm_repository:
+    name: argo
+    repo_url: "https://argoproj.github.io/argo-helm"
+
+- name: Deploy Argo CD
+  kubernetes.core.helm:
+    name: argocd
+    chart_ref: argo/argo-cd
+    chart_version: "{{ argocd_chart_version }}"
+    release_namespace: argocd
+    create_namespace: true
+    update_repo_cache: true
+    wait: true
+    values:
+      global:
+        domain: argocd.{{ domain }}
+      certificate:
+        enabled: false
+      server:
+        ingress:
+          enabled: true
+          ingressClassName: traefik
+          tls: false
+      dex:
+        enabled: false
+      notifications:
+        enabled: false
+      applicationSet:
+        enabled: false
+      configs:
+        params:
+          server.insecure: true
+
+- name: Add /etc/hosts entry for argocd.{{ domain }}
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "{{ ansible_ssh_host }} argocd.{{ domain }}"
+    state: present
+  notify: Initialize Argo CD
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
