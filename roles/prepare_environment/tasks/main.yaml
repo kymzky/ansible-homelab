@@ -1,7 +1,12 @@
 ---
 - name: Set timezone to Europe/Berlin
-  timezone:
+  community.general.timezone:
     name: Europe/Berlin
+
+- name: Use bash as default shell
+  ansible.builtin.user:
+    name: "{{ ansible_user }}"
+    shell: /bin/bash
 
 - name: Update and upgrade apt packages
   ansible.builtin.apt:
