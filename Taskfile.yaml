@@ -37,3 +37,9 @@ tasks:
       - multipass purge
       - nmcli connection delete multipassbr
     silent: true
+
+  prod-site:
+    desc: Run site.yaml against prod
+    cmds:
+      - ansible-playbook --vault-pass-file {{.VAULT_PASS_FILE}} -i inventory/prod.yaml playbooks/site.yaml
+    silent: true
