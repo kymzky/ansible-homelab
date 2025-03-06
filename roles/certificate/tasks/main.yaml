@@ -18,8 +18,9 @@
   ansible.builtin.template:
     src: strato-auth.json.j2
     dest: ~{{ ansible_user }}/strato-certbot/strato-auth.json
-    mode: "0644"
+    mode: "0400"
 
+# sudo certbot -n certonly --manual --preferred-challenges dns --agree-tos --email kymzky@outlook.com --manual-auth-hook "/home/user/strato-certbot/auth-hook.py strato-auth.json" --manual-cleanup-hook "/home/user/strato-certbot/cleanup-hook.py strato-auth.json" -d multipass.kymzky.dev -d *.multipass.kymzky.dev
 - name: Generate Certbot command
   ansible.builtin.command:
     cmd: >
