@@ -1,0 +1,32 @@
+---
+- name: Backup NFS share using borgbackup
+  hosts: openmediavault
+  gather_facts: true
+  become: true
+  environment:
+    BORG_PASSPHRASE: "{{ borg_passphrase }}"
+  tasks:
+    - name: Install borgbackup
+      ansible.builtin.apt:
+        name: borgbackup
+        update_cache: true
+
+    - name: Check if borg repository exists
+      ansible.builtin.shell: |
+        borg list {{ borg_repository }}
+      register: list_repository
+      changed_when: false
+      ignore_errors: true
+
+    - name: Initialize borg repository
+      ansible.builtin.shell: |
+        borg init --encryption=repokey {{ borg_repository }}
+      when: list_repository.rc != 0
+      register: init_result
+      changed_when: init_result.rc == 0
+
+    - name: Create backup
+      ansible.builtin.shell: |
+        borg create {{ borg_repository }}::{{ now(fmt='%Y-%m-%d_%H-%M') }} {{ nfs_share_path }}
+      register: backup_result
+      changed_when: backup_result.rc == 0
