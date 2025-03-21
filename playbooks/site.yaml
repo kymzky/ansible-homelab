@@ -4,7 +4,7 @@
   gather_facts: true
   become: true
   roles:
-    - role: prepare_environment
+    - role: prepare_k3s
 
 - name: Setup control
   hosts: control
