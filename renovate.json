@@ -3,5 +3,40 @@
   "assignees": ["kymzky"],
   "extends": [
     "config:recommended"
-  ]
+  ],
+  "customManagers": [{
+    "customType": "regex",
+    "fileMatch": ["^inventory/.*$"],
+    "matchStrings": ["argocd_version: v(?<currentValue>\\d+\\.\\d+\\.\\d+)*"],
+    "depNameTemplate": "argoproj/argo-cd",
+    "datasourceTemplate": "github-releases",
+    "versioningTemplate": "semver"
+  },
+  {
+    "customType": "regex",
+    "fileMatch": ["^inventory/.*$"],
+    "matchStrings": ["argocd_chart_version: (?<currentValue>\\d+\\.\\d+\\.\\d+)*"],
+    "depNameTemplate": "argoproj/argo-helm",
+    "datasourceTemplate": "github-releases",
+    "versioningTemplate": "semver",
+    "extractVersionTemplate": "^argo-cd-(?<version>\\d+\\.\\d+\\.\\d+)$"
+  },
+  {
+    "customType": "regex",
+    "fileMatch": ["^inventory/.*$"],
+    "matchStrings": ["k3s_version: (?<currentValue>v\\d+\\.\\d+\\.\\d+\\+k3s1)"],
+    "depNameTemplate": "k3s",
+    "datasourceTemplate": "custom.k3s",
+    "versioningTemplate": "semver-coerced",
+    "extractVersionTemplate": "^v(?<version>\\d+\\.\\d+\\.\\d+)\\+k3s1$"
+  }
+  ],
+  "customDatasources": {
+    "k3s": {
+      "defaultRegistryUrlTemplate": "https://update.k3s.io/v1-release/channels",
+      "transformTemplates": [
+        "{\"releases\":[{\"version\": $$.(data[id = 'stable'].latest),\"sourceUrl\":\"https://github.com/k3s-io/k3s\",\"changelogUrl\":$join([\"https://github.com/k3s-io/k3s/releases/tag/\",data[id = 'stable'].latest])}],\"sourceUrl\": \"https://github.com/k3s-io/k3s\",\"homepage\": \"https://k3s.io/\"}"
+      ]
+    }
+  }
 }
