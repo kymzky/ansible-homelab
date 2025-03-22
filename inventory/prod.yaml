@@ -1,6 +1,9 @@
 ---
 all:
   hosts:
+    proxmox:
+      ansible_host: 192.168.0.1
+      ansible_user: root
     openmediavault:
       ansible_host: 192.168.1.200
       ansible_user: user
@@ -25,6 +28,7 @@ all:
       33616432623736306638666634363636303937303338613035313630346163643538666536323265
       316434346433303761666462336465313331
     nfs_share_path: /srv/dev-disk-by-uuid-92be9581-e405-401c-a3aa-3857d4b8d176/prod
+
 k3s_cluster:
   hosts:
     control:

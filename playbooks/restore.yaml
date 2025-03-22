@@ -13,10 +13,6 @@
       register: latest_archive
       changed_when: false
 
-    - name: Debug
-      ansible.builtin.debug:
-        var: latest_archive
-
     - name: Create restore directory
       ansible.builtin.file:
         path: "/tmp/backup_{{ latest_archive.stdout.split(' ')[0] }}"
