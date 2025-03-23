@@ -1,6 +1,8 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "assignees": ["kymzky"],
+  "assignees": [
+    "kymzky"
+  ],
   "customDatasources": {
     "k3s": {
       "defaultRegistryUrlTemplate": "https://update.k3s.io/v1-release/channels",
@@ -9,39 +11,56 @@
       ]
     }
   },
-  "customManagers": [{
-    "customType": "regex",
-    "fileMatch": ["^inventory/.*$"],
-    "matchStrings": ["argocd_version: v(?<currentValue>\\d+\\.\\d+\\.\\d+)*"],
-    "depNameTemplate": "argoproj/argo-cd",
-    "datasourceTemplate": "github-releases",
-    "versioningTemplate": "semver"
-  },
-  {
-    "customType": "regex",
-    "fileMatch": ["^inventory/.*$"],
-    "matchStrings": ["argocd_chart_version: (?<currentValue>\\d+\\.\\d+\\.\\d+)*"],
-    "depNameTemplate": "argoproj/argo-helm",
-    "datasourceTemplate": "github-releases",
-    "versioningTemplate": "semver",
-    "extractVersionTemplate": "^argo-cd-(?<version>\\d+\\.\\d+\\.\\d+)$"
-  },
-  {
-    "customType": "regex",
-    "fileMatch": ["^inventory/.*$"],
-    "matchStrings": ["k3s_version: (?<currentValue>v\\d+\\.\\d+\\.\\d+\\+k3s\\d+)"],
-    "depNameTemplate": "k3s-io/k3s",
-    "datasourceTemplate": "custom.k3s",
-    "versioningTemplate": "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)(?:-(?<prerelease>[a-z]+\\d+))?(?<compatibility>\\+k3s)(?<build>\\d+)$"
-  },
-  {
-    "customType": "regex",
-    "fileMatch": ["^inventory/.*$"],
-    "matchStrings": ["sealed_secrets_chart_version: (?<currentValue>\\d+\\.\\d+\\.\\d+)*"],
-    "depNameTemplate": "bitnami-labs/sealed-secrets",
-    "datasourceTemplate": "github-releases",
-    "versioningTemplate": "semver",
-    "extractVersionTemplate": "^helm-v(?<version>\\d+\\.\\d+\\.\\d+)$"
-  }
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^inventory/.*$"
+      ],
+      "matchStrings": [
+        "argocd_version: v(?<currentValue>\\d+\\.\\d+\\.\\d+)*"
+      ],
+      "depNameTemplate": "argoproj/argo-cd",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^inventory/.*$"
+      ],
+      "matchStrings": [
+        "argocd_chart_version: (?<currentValue>\\d+\\.\\d+\\.\\d+)*"
+      ],
+      "depNameTemplate": "argoproj/argo-helm",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver",
+      "extractVersionTemplate": "^argo-cd-(?<version>\\d+\\.\\d+\\.\\d+)$"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^inventory/.*$"
+      ],
+      "matchStrings": [
+        "k3s_version: (?<currentValue>v\\d+\\.\\d+\\.\\d+\\+k3s\\d+)"
+      ],
+      "depNameTemplate": "k3s-io/k3s",
+      "datasourceTemplate": "custom.k3s",
+      "versioningTemplate": "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)(?:-(?<prerelease>[a-z]+\\d+))?(?<compatibility>\\+k3s)(?<build>\\d+)$"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^inventory/.*$"
+      ],
+      "matchStrings": [
+        "sealed_secrets_chart_version: (?<currentValue>\\d+\\.\\d+\\.\\d+)*"
+      ],
+      "depNameTemplate": "bitnami-labs/sealed-secrets",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver",
+      "extractVersionTemplate": "^helm-v(?<version>\\d+\\.\\d+\\.\\d+)$"
+    }
   ]
 }
