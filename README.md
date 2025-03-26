@@ -7,7 +7,7 @@ cluster and installing Argo CD with predefined applications.
 
 - Deployment and maintenance of a Kubernetes cluster
 - Automated certificate handling using [Let's Encrypt](https://letsencrypt.org/)
-(domain at [STRATO](https://www.strato.de/) necessary)
+  (domain at [STRATO](https://www.strato.de/) necessary)
 - Installation of [sealed-secrets](https://github.com/bitnami-labs/sealed-secrets)
 - Installation of [Argo CD](https://argoproj.github.io/cd/)
 - Deployment of applications definied in [argocd-homelab](https://github.com/kymzky/argocd-homelab)

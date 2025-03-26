@@ -1,32 +1,30 @@
 ---
-- name: Backup NFS share using borgbackup
+- name: Backup NFS share using restic
   hosts: openmediavault
   gather_facts: true
   become: true
   environment:
-    BORG_PASSPHRASE: "{{ borg_passphrase }}"
+    RESTIC_PASSWORD_COMMAND: "{{ restic_password_command }}"
+    RESTIC_REPOSITORY: "{{ restic_repository }}"
   tasks:
-    - name: Install borgbackup
+    - name: Install restic
       ansible.builtin.apt:
-        name: borgbackup
+        name: restic
         update_cache: true
 
-    - name: Check if borg repository exists
+    - name: Init repository
       ansible.builtin.shell: |
-        borg list {{ borg_repository }}
-      register: list_repository
-      changed_when: false
-      ignore_errors: true
-
-    - name: Initialize borg repository
-      ansible.builtin.shell: |
-        borg init --encryption=repokey {{ borg_repository }}
-      when: list_repository.rc != 0
+        restic init
       register: init_result
       changed_when: init_result.rc == 0
+      ignore_errors: true
 
     - name: Create backup
       ansible.builtin.shell: |
-        borg create {{ borg_repository }}::{{ now(fmt='%Y-%m-%d_%H-%M') }} {{ nfs_share_path }}
+        restic backup --limit-upload 1024 {{ nfs_share_path }}
       register: backup_result
       changed_when: backup_result.rc == 0
+
+    - name: Debug
+      ansible.builtin.debug:
+        msg: "{{ backup_result.stdout_lines }}"

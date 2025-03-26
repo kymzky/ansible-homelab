@@ -2,7 +2,6 @@
 version: '3'
 
 vars:
-  MULTIPASS_DOMAIN: "multipass.kymzky.dev"
   VAULT_PASS_FILE: ".vault-pass"
 
 tasks:
@@ -14,9 +13,21 @@ tasks:
       - task: multipass-site
     silent: true
 
+  multipass-backup:
+    desc: Backup multipass NFS share
+    cmds:
+      - ansible-playbook --vault-pass-file {{.VAULT_PASS_FILE}} -i inventory/multipass.yaml playbooks/backup.yaml
+    silent: true
+
   multipass-launch:
     desc: Launch multipass VMs
     cmds: [./multipass/launch.sh]
+    silent: true
+
+  multipass-restore:
+    desc: Restore multipass NFS share to localhost
+    cmds:
+      - ansible-playbook --vault-pass-file {{.VAULT_PASS_FILE}} -i inventory/multipass.yaml playbooks/restore.yaml
     silent: true
 
   multipass-site:
@@ -36,6 +47,18 @@ tasks:
       - multipass delete worker2
       - multipass purge
       - nmcli connection delete multipassbr
+    silent: true
+
+  prod-backup:
+    desc: Backup prod NFS share
+    cmds:
+      - ansible-playbook --vault-pass-file {{.VAULT_PASS_FILE}} -i inventory/prod.yaml playbooks/backup.yaml
+    silent: true
+
+  prod-restore:
+    desc: Restore prod NFS share to localhost
+    cmds:
+      - ansible-playbook --vault-pass-file {{.VAULT_PASS_FILE}} -i inventory/prod.yaml playbooks/restore.yaml
     silent: true
 
   prod-site:

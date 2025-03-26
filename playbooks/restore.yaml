@@ -1,30 +1,34 @@
 ---
-- name: Restore latest NFS share backup to localhost using borgbackup
+- name: Restore latest NFS share backup to localhost using restic
   hosts: localhost
   gather_facts: true
   environment:
-    BORG_PASSPHRASE: "{{ borg_passphrase }}"
+    RESTIC_PASSWORD_COMMAND: "{{ restic_password_command }}"
+    RESTIC_REPOSITORY: "{{ restic_repository }}"
   tasks:
-    - name: Find latest backup archive
+    - name: List snapshots
       ansible.builtin.shell: |
-        set -o pipefail && borg list {{ borg_repository }} | tail -n 1
-      args:
-        executable: /bin/bash
-      register: latest_archive
+        restic snapshots
+      register: snapshots_result
       changed_when: false
+
+    - name: Debug
+      ansible.builtin.debug:
+        msg: "{{ snapshots_result.stdout_lines }}"
+
+    - name: Prompt snapshot ID
+      ansible.builtin.pause:
+        prompt: "Enter snapshot ID to restore"
+      register: snapshot_id
 
     - name: Create restore directory
       ansible.builtin.file:
-        path: "/tmp/backup_{{ latest_archive.stdout.split(' ')[0] }}"
+        path: "/tmp/snapshot_{{ snapshot_id.user_input }}"
         mode: "0755"
         state: directory
 
-    - name: Extract latest backup
+    - name: Restore backup
       ansible.builtin.shell: |
-        borg extract {{ borg_repository }}::{{
-          latest_archive.stdout.split(' ')[0]
-        }} {{ nfs_share_path }}
-      args:
-        chdir: "/tmp/backup_{{ latest_archive.stdout.split(' ')[0] }}"
+        restic restore {{ snapshot_id.user_input }} --target /tmp/snapshot_{{ snapshot_id.user_input }}
       register: restore_result
       changed_when: restore_result.rc == 0
