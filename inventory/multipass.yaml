@@ -44,7 +44,7 @@ k3s_cluster:
   vars:
     argocd_apps_branch: develop
     argocd_chart_version: 9.1.5
-    argocd_version: v3.1.8
+    argocd_version: v3.2.1
     argocd_password: password
     argocd_values: values-multipass.yaml
     cluster_ip: 10.10.0.1
