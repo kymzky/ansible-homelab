@@ -1,0 +1,15 @@
+---
+- name: Find domain's current certificates
+  ansible.builtin.find:
+    paths: /etc/letsencrypt/live
+    patterns: "{{ domain }}*"
+    file_type: directory
+  register: remove_certificate_directories
+  become: true
+
+- name: Delete cerfiticates' directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ remove_certificate_directories.files }}"
+  become: true
