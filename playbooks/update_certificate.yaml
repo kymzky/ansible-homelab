@@ -1,0 +1,6 @@
+---
+- name: Update certificate
+  hosts: control
+  roles:
+    - role: remove_certificate
+    - role: certificate
