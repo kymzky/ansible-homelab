@@ -3,6 +3,7 @@
   "assignees": [
     "kymzky"
   ],
+  "dependencyDashboard": true,
   "customDatasources": {
     "k3s": {
       "defaultRegistryUrlTemplate": "https://update.k3s.io/v1-release/channels",
