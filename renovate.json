@@ -15,8 +15,8 @@
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": [
-        "^inventory/.*$"
+      "managerFilePatterns": [
+        "/^inventory/.*$/"
       ],
       "matchStrings": [
         "argocd_version: v(?<currentValue>\\d+\\.\\d+\\.\\d+)*"
@@ -27,8 +27,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "^inventory/.*$"
+      "managerFilePatterns": [
+        "/^inventory/.*$/"
       ],
       "matchStrings": [
         "argocd_chart_version: (?<currentValue>\\d+\\.\\d+\\.\\d+)*"
@@ -40,8 +40,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "^inventory/.*$"
+      "managerFilePatterns": [
+        "/^inventory/.*$/"
       ],
       "matchStrings": [
         "k3s_version: (?<currentValue>v\\d+\\.\\d+\\.\\d+\\+k3s\\d+)"
@@ -52,8 +52,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "^inventory/.*$"
+      "managerFilePatterns": [
+        "/^inventory/.*$/"
       ],
       "matchStrings": [
         "sealed_secrets_chart_version: (?<currentValue>\\d+\\.\\d+\\.\\d+)*"
