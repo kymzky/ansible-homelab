@@ -51,7 +51,7 @@ k3s_cluster:
     domain: multipass.kymzky.dev
     k3s_version: v1.33.6+k3s1
     mail: kymzky@outlook.com
-    sealed_secrets_chart_version: 2.17.9
+    sealed_secrets_chart_version: 2.18.0
     strato_certbot_version: d7f982d
     strato_password: !vault |
       $ANSIBLE_VAULT;1.1;AES256
