@@ -47,7 +47,7 @@ k3s_cluster:
   vars:
     argocd_apps_branch: main
     argocd_chart_version: 9.4.1
-    argocd_version: v3.3.0
+    argocd_version: 3.3.0
     argocd_password: !vault |
       $ANSIBLE_VAULT;1.1;AES256
       39343265633432636630333861653634643366613930373666643264653331376238393239343738

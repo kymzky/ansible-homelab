@@ -1,6 +1,21 @@
 ---
+- name: Read ArgoCD version
+  ansible.builtin.command: argocd version --short --client
+  register: argocd_cli_version_raw
+  changed_when: false
+
+- name: Trim version
+  ansible.builtin.set_fact:
+    argocd_cli_version: "{{ argocd_cli_version_raw.stdout | regex_replace('^argocd: v', '') | regex_replace('\\+.*$', '') }}"
+
+- name: Remove current Argo CD CLI installation
+  ansible.builtin.file:
+    path: /usr/local/bin/argocd
+    state: absent
+  when: argocd_cli_version is version(argocd_version, "!=")
+
 - name: Download Argo CD CLI
   ansible.builtin.get_url:
-    url: "https://github.com/argoproj/argo-cd/releases/download/{{ argocd_version }}/argocd-linux-{{ ansible_architecture | regex_replace('^x86_64$', 'amd64') }}"
+    url: "https://github.com/argoproj/argo-cd/releases/download/v{{ argocd_version }}/argocd-linux-{{ ansible_architecture | regex_replace('^x86_64$', 'amd64') }}"
     dest: /usr/local/bin/argocd
     mode: "0755"

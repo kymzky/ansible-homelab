@@ -19,7 +19,7 @@
         "/^inventory/.*$/"
       ],
       "matchStrings": [
-        "argocd_version: v(?<currentValue>\\d+\\.\\d+\\.\\d+)*"
+        "argocd_version: (?<currentValue>\\d+\\.\\d+\\.\\d+)*"
       ],
       "depNameTemplate": "argoproj/argo-cd",
       "datasourceTemplate": "github-releases",
