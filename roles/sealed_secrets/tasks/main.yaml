@@ -14,15 +14,10 @@
       type: Opaque
 # INFO: If a sealed-secrets-controller already exists it must be destroyed and re-created afterwards in order to read updated keys
 
-- name: Add sealed-secrets repo
-  kubernetes.core.helm_repository:
-    name: sealed-secrets
-    repo_url: "https://bitnami-labs.github.io/sealed-secrets"
-
 - name: Deploy sealed-secrets
   kubernetes.core.helm:
     name: sealed-secrets
-    chart_ref: sealed-secrets/sealed-secrets
+    chart_ref: oci://registry-1.docker.io/bitnamicharts/sealed-secrets
     chart_version: "{{ sealed_secrets_chart_version }}"
     release_namespace: kube-system
     update_repo_cache: true
