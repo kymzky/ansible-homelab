@@ -1,17 +1,17 @@
 ---
 - name: Get k3s installed version
   ansible.builtin.command: k3s --version
-  register: k3s_version_output
+  register: k3s_worker_version_output
   changed_when: false
   ignore_errors: true
 
 - name: Set k3s installed version
-  when: k3s_version_output.rc == 0
+  when: k3s_worker_version_output.rc == 0
   ansible.builtin.set_fact:
-    installed_k3s_version: "{{ k3s_version_output.stdout_lines[0].split(' ')[2] }}"
+    k3s_worker_installed_version: "{{ k3s_worker_version_output.stdout_lines[0].split(' ')[2] }}"
 
 - name: Download artifact only if needed
-  when: k3s_version_output.rc != 0 or installed_k3s_version is version(k3s_version, '<')
+  when: k3s_worker_version_output.rc != 0 or k3s_worker_installed_version is version(k3s_version, '<')
   block:
     - name: Download K3s install script
       ansible.builtin.get_url:
@@ -32,7 +32,7 @@
       changed_when: true
 
 - name: Copy K3s service file
-  register: k3s_agent_service
+  register: k3s_worker_agent_service
   ansible.builtin.template:
     src: "k3s-agent.service.j2"
     dest: "{{ systemd_dir }}/k3s-agent.service"
@@ -43,6 +43,13 @@
 - name: Enable and check K3s service
   ansible.builtin.systemd:
     name: k3s-agent
-    daemon_reload: "{{ true if k3s_agent_service.changed else false }}"
-    state: "{{ 'restarted' if k3s_agent_service.changed else 'started' }}"
+    daemon_reload: "{{ true if k3s_worker_agent_service.changed else false }}"
+    state: "{{ 'restarted' if k3s_worker_agent_service.changed else 'started' }}"
     enabled: true
+
+- name: Restart k3s-agent
+  ansible.builtin.systemd:
+    name: k3s-agent
+    state: restarted
+    daemon_reload: true
+  when: k3s_worker_installed_version is version(k3s_version, '<')
