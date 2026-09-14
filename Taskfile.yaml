@@ -49,6 +49,12 @@ tasks:
       - nmcli connection delete multipassbr
     silent: true
 
+  multipass-update-k3s:
+    desc: Run update_k3s.yaml against multipass
+    cmds:
+      - ansible-playbook --vault-pass-file {{.VAULT_PASS_FILE}} -i inventory/multipass.yaml playbooks/update_k3s.yaml
+    silent: true
+
   prod-backup:
     desc: Backup prod NFS share
     cmds:
@@ -65,4 +71,10 @@ tasks:
     desc: Run site.yaml against prod
     cmds:
       - ansible-playbook --vault-pass-file {{.VAULT_PASS_FILE}} -i inventory/prod.yaml playbooks/site.yaml
+    silent: true
+
+  prod-update-k3s:
+    desc: Run update_k3s.yaml against prod
+    cmds:
+      - ansible-playbook --vault-pass-file {{.VAULT_PASS_FILE}} -i inventory/prod.yaml playbooks/update_k3s.yaml
     silent: true

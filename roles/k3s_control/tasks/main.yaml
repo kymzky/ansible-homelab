@@ -1,17 +1,17 @@
 ---
 - name: Get k3s installed version
   ansible.builtin.command: k3s --version
-  register: k3s_version_output
+  register: k3s_control_version_output
   changed_when: false
   ignore_errors: true
 
 - name: Set k3s installed version
-  when: k3s_version_output.rc == 0
+  when: k3s_control_version_output.rc == 0
   ansible.builtin.set_fact:
-    installed_k3s_version: "{{ k3s_version_output.stdout_lines[0].split(' ')[2] }}"
+    k3s_control_installed_version: "{{ k3s_control_version_output.stdout_lines[0].split(' ')[2] }}"
 
 - name: Download artifact only if needed
-  when: k3s_version_output.rc != 0 or installed_k3s_version is version(k3s_version, '<')
+  when: k3s_control_version_output.rc != 0 or k3s_control_installed_version is version(k3s_version, '<')
   block:
     - name: Download K3s install script
       ansible.builtin.get_url:
@@ -29,6 +29,13 @@
         INSTALL_K3S_SKIP_START: "true"
         INSTALL_K3S_VERSION: "{{ k3s_version }}"
       changed_when: true
+
+- name: Restart k3s
+  ansible.builtin.systemd:
+    name: k3s
+    state: restarted
+    daemon_reload: true
+  when: k3s_control_installed_version is version(k3s_version, '<')
 
 - name: Add K3s autocomplete to user bashrc
   ansible.builtin.lineinfile:
@@ -72,14 +79,14 @@
 
     - name: Check whether kubectl is installed on control node
       ansible.builtin.command: 'kubectl'
-      register: kubectl_installed
+      register: k3s_control_kubectl_installed
       ignore_errors: true
       delegate_to: 127.0.0.1
       become: false
       changed_when: false
 
     - name: Apply K3S kubeconfig to control node
-      when: kubectl_installed.rc == 0
+      when: k3s_control_kubectl_installed.rc == 0
       block:
         - name: Copy kubeconfig to control node
           ansible.builtin.fetch:
@@ -113,9 +120,9 @@
             mv ${TFILE} {{ kubeconfig }}
           delegate_to: 127.0.0.1
           become: false
-          register: mv_result
+          register: k3s_control_mv_result
           changed_when:
-            - mv_result.rc == 0
+            - k3s_control_mv_result.rc == 0
 
 - name: Setup kubectl for user
   when: user_kubectl
