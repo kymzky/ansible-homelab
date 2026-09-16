@@ -1,0 +1,12 @@
+---
+- name: Update control
+  hosts: control
+  become: true
+  roles:
+    - role: k3s_control
+
+- name: Update worker
+  hosts: worker
+  become: true
+  roles:
+    - role: k3s_worker
