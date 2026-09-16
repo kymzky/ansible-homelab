@@ -1,21 +1,39 @@
 ---
+- name: Check if Argo CD CLI exists
+  ansible.builtin.stat:
+    path: /usr/local/bin/argocd
+  register: argocd_cli_binary
+
 - name: Read ArgoCD version
   ansible.builtin.command: argocd version --short --client
-  register: argocd_cli_version_raw
+  register: argocd_cli_installed_version_raw
   changed_when: false
+  when: argocd_cli_binary.stat.exists
 
-- name: Trim version
+- name: Set installed version fact
   ansible.builtin.set_fact:
-    argocd_cli_version: "{{ argocd_cli_version_raw.stdout | regex_replace('^argocd: v', '') | regex_replace('\\+.*$', '') }}"
+    argocd_cli_installed_version: >-
+      {{
+        (argocd_cli_installed_version_raw.stdout | regex_replace('^argocd: v', '') | regex_replace('\+.*$', ''))
+        if argocd_cli_binary.stat.exists else ''
+      }}
 
-- name: Remove current Argo CD CLI installation
+- name: Remove installed Argo CD CLI installation
   ansible.builtin.file:
     path: /usr/local/bin/argocd
     state: absent
-  when: argocd_cli_version is version(argocd_version, "!=")
+  when:
+    - argocd_cli_binary.stat.exists
+    - argocd_cli_installed_version is version(argocd_cli_version, "<")
 
 - name: Download Argo CD CLI
   ansible.builtin.get_url:
-    url: "https://github.com/argoproj/argo-cd/releases/download/v{{ argocd_version }}/argocd-linux-{{ ansible_architecture | regex_replace('^x86_64$', 'amd64') }}"
+    url: >-
+      https://github.com/argoproj/argo-cd/releases/download/v{{ argocd_cli_version }}/argocd-linux-{{
+      ansible_facts['architecture'] | regex_replace('^x86_64$', 'amd64') }}
     dest: /usr/local/bin/argocd
     mode: "0755"
+    timeout: 120
+  when: >
+    not argocd_cli_binary.stat.exists or
+    argocd_cli_installed_version is version(argocd_cli_version, "<")

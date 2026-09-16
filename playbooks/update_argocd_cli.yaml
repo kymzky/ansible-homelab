@@ -1,0 +1,6 @@
+---
+- name: Update ArgoCD CLI
+  hosts: control
+  become: true
+  roles:
+    - role: argocd_cli
