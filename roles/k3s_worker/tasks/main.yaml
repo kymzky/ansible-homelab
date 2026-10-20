@@ -52,4 +52,4 @@
     name: k3s-agent
     state: restarted
     daemon_reload: true
-  when: k3s_worker_installed_version is version(k3s_version, '<')
+  when: k3s_worker_version_output.rc != 0 or k3s_worker_installed_version is version(k3s_version, '<')
