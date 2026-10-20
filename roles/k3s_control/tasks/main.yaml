@@ -30,13 +30,6 @@
         INSTALL_K3S_VERSION: "{{ k3s_version }}"
       changed_when: true
 
-- name: Restart k3s
-  ansible.builtin.systemd:
-    name: k3s
-    state: restarted
-    daemon_reload: true
-  when: k3s_control_installed_version is version(k3s_version, '<')
-
 - name: Add K3s autocomplete to user bashrc
   ansible.builtin.lineinfile:
     path: "~{{ ansible_user }}/.bashrc"
@@ -56,6 +49,7 @@
         mode: "0644"
 
     - name: Copy K3s service file
+      register: k3s_control_service
       ansible.builtin.template:
         src: "k3s-single.service.j2"
         dest: "{{ systemd_dir }}/k3s.service"
@@ -74,7 +68,7 @@
       ansible.builtin.systemd:
         name: k3s
         daemon_reload: true
-        state: started
+        state: "{{ 'restarted' if k3s_control_service.changed else 'started' }}"
         enabled: true
 
     - name: Check whether kubectl is installed on control node
