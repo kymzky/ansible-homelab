@@ -1,0 +1,178 @@
+---
+- name: Wait for nodes
+  hosts: k3s_cluster
+  gather_facts: false
+  vars_files:
+    - vars/cluster_power.yaml
+  tasks:
+    - name: Wait for node to be reachable
+      ansible.builtin.wait_for_connection:
+        timeout: "{{ cluster_power_boot_timeout }}"
+
+- name: Start control
+  hosts: control
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Start k3s
+      ansible.builtin.systemd_service:
+        name: k3s
+        state: started
+        enabled: true
+
+- name: Start worker
+  hosts: worker
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Start k3s agent
+      ansible.builtin.systemd_service:
+        name: k3s-agent
+        state: started
+        enabled: true
+
+- name: Restore cluster
+  hosts: control
+  gather_facts: false
+  vars_files:
+    - vars/cluster_power.yaml
+  tasks:
+    - name: Wait for all nodes to be ready
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Node
+      register: cluster_power_nodes
+      retries: "{{ cluster_power_ready_retries }}"
+      delay: "{{ cluster_power_ready_delay }}"
+      until: >-
+        cluster_power_nodes is succeeded
+        and (cluster_power_nodes.resources
+        | map(attribute='status.conditions')
+        | map('selectattr', 'type', 'equalto', 'Ready')
+        | map('first')
+        | selectattr('status', 'equalto', 'True')
+        | list | length) == (groups['k3s_cluster'] | length)
+
+    - name: Check for Longhorn
+      kubernetes.core.k8s_info:
+        api_version: longhorn.io/v1beta2
+        kind: Volume
+        namespace: "{{ cluster_power_longhorn_namespace }}"
+      register: cluster_power_longhorn
+
+    - name: Wait for Longhorn manager
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: DaemonSet
+        namespace: "{{ cluster_power_longhorn_namespace }}"
+        name: longhorn-manager
+        wait: true
+        wait_timeout: "{{ cluster_power_ready_retries * cluster_power_ready_delay }}"
+      when: cluster_power_longhorn.api_found | default(false)
+
+    - name: Get scaled down Deployments
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        label_selectors:
+          - "{{ cluster_power_label_replicas }}"
+      register: cluster_power_deployments
+
+    - name: Restore Deployments
+      kubernetes.core.k8s:
+        state: patched
+        api_version: apps/v1
+        kind: Deployment
+        namespace: "{{ item.metadata.namespace }}"
+        name: "{{ item.metadata.name }}"
+        definition:
+          metadata:
+            labels: "{{ {cluster_power_label_replicas: none} }}"
+          spec:
+            replicas: "{{ item.metadata.labels[cluster_power_label_replicas] | int }}"
+      loop: >-
+        {{ cluster_power_deployments.resources
+        | rejectattr('metadata.namespace', 'equalto', cluster_power_argocd_namespace)
+        | list }}
+      loop_control:
+        label: "{{ item.metadata.namespace }}/{{ item.metadata.name }}"
+
+    - name: Get scaled down StatefulSets
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: StatefulSet
+        label_selectors:
+          - "{{ cluster_power_label_replicas }}"
+      register: cluster_power_statefulsets
+
+    - name: Restore StatefulSets
+      kubernetes.core.k8s:
+        state: patched
+        api_version: apps/v1
+        kind: StatefulSet
+        namespace: "{{ item.metadata.namespace }}"
+        name: "{{ item.metadata.name }}"
+        definition:
+          metadata:
+            labels: "{{ {cluster_power_label_replicas: none} }}"
+          spec:
+            replicas: "{{ item.metadata.labels[cluster_power_label_replicas] | int }}"
+      loop: >-
+        {{ cluster_power_statefulsets.resources
+        | rejectattr('metadata.namespace', 'equalto', cluster_power_argocd_namespace)
+        | list }}
+      loop_control:
+        label: "{{ item.metadata.namespace }}/{{ item.metadata.name }}"
+
+    - name: Get suspended CronJobs
+      kubernetes.core.k8s_info:
+        api_version: batch/v1
+        kind: CronJob
+        label_selectors:
+          - "{{ cluster_power_label_suspended }}"
+      register: cluster_power_cronjobs
+
+    - name: Resume CronJobs
+      kubernetes.core.k8s:
+        state: patched
+        api_version: batch/v1
+        kind: CronJob
+        namespace: "{{ item.metadata.namespace }}"
+        name: "{{ item.metadata.name }}"
+        definition:
+          metadata:
+            labels: "{{ {cluster_power_label_suspended: none} }}"
+          spec:
+            suspend: false
+      loop: "{{ cluster_power_cronjobs.resources }}"
+      loop_control:
+        label: "{{ item.metadata.namespace }}/{{ item.metadata.name }}"
+
+    - name: Get Argo CD application controller
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: "{{ item }}"
+        namespace: "{{ cluster_power_argocd_namespace }}"
+        label_selectors:
+          - "{{ cluster_power_label_replicas }}"
+          - "{{ cluster_power_argocd_controller_selector }}"
+      loop:
+        - StatefulSet
+        - Deployment
+      register: cluster_power_argocd_controller
+
+    - name: Scale up Argo CD application controller
+      kubernetes.core.k8s:
+        state: patched
+        api_version: apps/v1
+        kind: "{{ item.0.item }}"
+        namespace: "{{ item.1.metadata.namespace }}"
+        name: "{{ item.1.metadata.name }}"
+        definition:
+          metadata:
+            labels: "{{ {cluster_power_label_replicas: none} }}"
+          spec:
+            replicas: "{{ item.1.metadata.labels[cluster_power_label_replicas] | int }}"
+      loop: "{{ cluster_power_argocd_controller.results | subelements('resources') }}"
+      loop_control:
+        label: "{{ item.1.metadata.namespace }}/{{ item.1.metadata.name }}"
