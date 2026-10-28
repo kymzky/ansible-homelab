@@ -36,6 +36,21 @@ tasks:
       - ansible-playbook --vault-pass-file {{.VAULT_PASS_FILE}} -i inventory/multipass.yaml playbooks/site.yaml
     silent: true
 
+  multipass-shutdown:
+    desc: Gracefully shut down multipass cluster and power off the nodes
+    cmds:
+      - ansible-playbook --vault-pass-file {{.VAULT_PASS_FILE}} -i inventory/multipass.yaml playbooks/shutdown.yaml
+    silent: true
+
+  multipass-startup:
+    desc: Power on multipass nodes and bring cluster back up after shutdown
+    cmds:
+      - multipass start control
+      - multipass start worker1
+      - multipass start worker2
+      - ansible-playbook --vault-pass-file {{.VAULT_PASS_FILE}} -i inventory/multipass.yaml playbooks/startup.yaml
+    silent: true
+
   multipass-delete:
     desc: Delete multipass VMs
     cmds:
@@ -77,6 +92,18 @@ tasks:
     desc: Run site.yaml against prod
     cmds:
       - ansible-playbook --vault-pass-file {{.VAULT_PASS_FILE}} -i inventory/prod.yaml playbooks/site.yaml
+    silent: true
+
+  prod-shutdown:
+    desc: Gracefully shut down prod cluster and power off the nodes
+    cmds:
+      - ansible-playbook --vault-pass-file {{.VAULT_PASS_FILE}} -i inventory/prod.yaml playbooks/shutdown.yaml
+    silent: true
+
+  prod-startup:
+    desc: Bring prod cluster back up after shutdown (nodes must be powered on)
+    cmds:
+      - ansible-playbook --vault-pass-file {{.VAULT_PASS_FILE}} -i inventory/prod.yaml playbooks/startup.yaml
     silent: true
 
   prod-update-argocd-cli:
