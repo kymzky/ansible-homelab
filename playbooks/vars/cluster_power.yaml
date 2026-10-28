@@ -1,0 +1,22 @@
+---
+cluster_power_label_replicas: ansible-homelab/shutdown-replicas
+cluster_power_label_suspended: ansible-homelab/shutdown-suspended
+
+cluster_power_excluded_namespaces:
+  - kube-system
+  - kube-public
+  - kube-node-lease
+  - argocd
+  - longhorn-system
+
+cluster_power_argocd_namespace: argocd
+cluster_power_argocd_controller_selector: app.kubernetes.io/name=argocd-application-controller
+
+cluster_power_longhorn_namespace: longhorn-system
+
+cluster_power_detach_retries: 60
+cluster_power_detach_delay: 10
+
+cluster_power_boot_timeout: 900
+cluster_power_ready_retries: 60
+cluster_power_ready_delay: 10

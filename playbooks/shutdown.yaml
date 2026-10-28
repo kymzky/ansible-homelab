@@ -1,0 +1,188 @@
+---
+# Nodes are intentionally neither cordoned nor drained: the cluster goes down as
+# a whole, a drain would be blocked by Longhorn's PodDisruptionBudgets, and a
+# cordon would survive the reboot.
+
+- name: Prepare cluster for shutdown
+  hosts: control
+  gather_facts: false
+  vars_files:
+    - vars/cluster_power.yaml
+  tasks:
+    - name: Get Argo CD application controller
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: "{{ item }}"
+        namespace: "{{ cluster_power_argocd_namespace }}"
+        label_selectors:
+          - "{{ cluster_power_argocd_controller_selector }}"
+      loop:
+        - StatefulSet
+        - Deployment
+      register: cluster_power_argocd_controller
+
+    - name: Scale down Argo CD application controller
+      kubernetes.core.k8s:
+        state: patched
+        api_version: apps/v1
+        kind: "{{ item.0.item }}"
+        namespace: "{{ item.1.metadata.namespace }}"
+        name: "{{ item.1.metadata.name }}"
+        definition:
+          metadata:
+            labels: "{{ {cluster_power_label_replicas: item.1.spec.replicas | string} }}"
+          spec:
+            replicas: 0
+      loop: "{{ cluster_power_argocd_controller.results | subelements('resources') }}"
+      loop_control:
+        label: "{{ item.1.metadata.namespace }}/{{ item.1.metadata.name }}"
+      when: item.1.spec.replicas > 0
+
+    - name: Get Deployments
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+      register: cluster_power_deployments
+
+    - name: Scale down Deployments
+      kubernetes.core.k8s:
+        state: patched
+        api_version: apps/v1
+        kind: Deployment
+        namespace: "{{ item.metadata.namespace }}"
+        name: "{{ item.metadata.name }}"
+        definition:
+          metadata:
+            labels: "{{ {cluster_power_label_replicas: item.spec.replicas | string} }}"
+          spec:
+            replicas: 0
+      loop: >-
+        {{ cluster_power_deployments.resources
+        | rejectattr('metadata.namespace', 'in', cluster_power_excluded_namespaces)
+        | selectattr('spec.replicas', 'gt', 0)
+        | list }}
+      loop_control:
+        label: "{{ item.metadata.namespace }}/{{ item.metadata.name }}"
+
+    - name: Get StatefulSets
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: StatefulSet
+      register: cluster_power_statefulsets
+
+    - name: Scale down StatefulSets
+      kubernetes.core.k8s:
+        state: patched
+        api_version: apps/v1
+        kind: StatefulSet
+        namespace: "{{ item.metadata.namespace }}"
+        name: "{{ item.metadata.name }}"
+        definition:
+          metadata:
+            labels: "{{ {cluster_power_label_replicas: item.spec.replicas | string} }}"
+          spec:
+            replicas: 0
+      loop: >-
+        {{ cluster_power_statefulsets.resources
+        | rejectattr('metadata.namespace', 'in', cluster_power_excluded_namespaces)
+        | selectattr('spec.replicas', 'gt', 0)
+        | list }}
+      loop_control:
+        label: "{{ item.metadata.namespace }}/{{ item.metadata.name }}"
+
+    # A CronJob could start a pod that holds a volume while waiting for detach.
+    - name: Get CronJobs
+      kubernetes.core.k8s_info:
+        api_version: batch/v1
+        kind: CronJob
+      register: cluster_power_cronjobs
+
+    - name: Suspend CronJobs
+      kubernetes.core.k8s:
+        state: patched
+        api_version: batch/v1
+        kind: CronJob
+        namespace: "{{ item.metadata.namespace }}"
+        name: "{{ item.metadata.name }}"
+        definition:
+          metadata:
+            labels: "{{ {cluster_power_label_suspended: 'true'} }}"
+          spec:
+            suspend: true
+      loop: >-
+        {{ cluster_power_cronjobs.resources
+        | rejectattr('metadata.namespace', 'in', cluster_power_excluded_namespaces)
+        | rejectattr('spec.suspend', 'equalto', true)
+        | list }}
+      loop_control:
+        label: "{{ item.metadata.namespace }}/{{ item.metadata.name }}"
+
+    - name: Wait for Longhorn volumes to detach
+      block:
+        - name: Get Longhorn volumes
+          kubernetes.core.k8s_info:
+            api_version: longhorn.io/v1beta2
+            kind: Volume
+            namespace: "{{ cluster_power_longhorn_namespace }}"
+          register: cluster_power_longhorn_volumes
+          no_log: true
+          retries: "{{ cluster_power_detach_retries }}"
+          delay: "{{ cluster_power_detach_delay }}"
+          until: >-
+            cluster_power_longhorn_volumes is succeeded
+            and (cluster_power_longhorn_volumes.resources
+            | rejectattr('status.state', 'equalto', 'detached')
+            | list | length) == 0
+      rescue:
+        - name: Fail because Longhorn volumes are still attached
+          ansible.builtin.fail:
+            msg: >-
+              {% if cluster_power_longhorn_volumes.resources is defined %}
+              Longhorn volumes are still attached after
+              {{ cluster_power_detach_retries * cluster_power_detach_delay }}s:
+              {{ cluster_power_longhorn_volumes.resources
+              | rejectattr('status.state', 'equalto', 'detached')
+              | map(attribute='metadata.name') | join(', ') }}.
+              Something that was not scaled down (bare pods, Jobs, pods owned
+              by an operator or workloads in an excluded namespace) still uses
+              them.
+              {% else %}
+              Could not read the Longhorn volumes:
+              {{ cluster_power_longhorn_volumes.msg | default('unknown error') }}.
+              {% endif %}
+              No node has been stopped yet. Fix this and run the playbook
+              again, or run startup.yaml to restore the workloads.
+
+- name: Shut down worker
+  hosts: worker
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Stop k3s agent
+      ansible.builtin.systemd_service:
+        name: k3s-agent
+        state: stopped
+
+    - name: Stop all containers and unmount k3s mounts
+      ansible.builtin.command: /usr/local/bin/k3s-killall.sh
+      changed_when: true
+
+    - name: Power off worker
+      community.general.shutdown:
+
+- name: Shut down control
+  hosts: control
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Stop k3s
+      ansible.builtin.systemd_service:
+        name: k3s
+        state: stopped
+
+    - name: Stop all containers and unmount k3s mounts
+      ansible.builtin.command: /usr/local/bin/k3s-killall.sh
+      changed_when: true
+
+    - name: Power off control
+      community.general.shutdown:
