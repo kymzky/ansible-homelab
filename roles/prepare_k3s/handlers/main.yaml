@@ -1,0 +1,4 @@
+---
+- name: Reload multipathd
+  ansible.builtin.shell: multipathd reconfigure && multipath -F
+  changed_when: true

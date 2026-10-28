@@ -240,7 +240,23 @@
         mode: "0600"
       loop: "{{ extra_manifests }}"
 
-- name: Install nfs-common
+- name: Install nfs-common and open-iscsi
   ansible.builtin.apt:
-    name: nfs-common
+    name:
+      - nfs-common
+      - open-iscsi
     update_cache: true
+
+- name: Blacklist Longhorn devices in multipath
+  when: "'multipath-tools' in ansible_facts.packages"
+  block:
+    - name: Add blacklist to /etc/multipath.conf
+      ansible.builtin.blockinfile:
+        path: /etc/multipath.conf
+        create: true
+        mode: "0644"
+        block: |
+          blacklist {
+              devnode "^sd[a-z0-9]+"
+          }
+      notify: Reload multipathd
