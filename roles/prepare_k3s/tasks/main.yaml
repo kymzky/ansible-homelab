@@ -260,3 +260,18 @@
               devnode "^sd[a-z0-9]+"
           }
       notify: Reload multipathd
+
+- name: Check for AppArmor profile of wg-quick
+  ansible.builtin.stat:
+    path: /etc/apparmor.d/wg-quick
+  register: wg_quick_apparmor_profile
+
+- name: Disable AppArmor profile for wg-quick
+  when: wg_quick_apparmor_profile.stat.exists
+  ansible.builtin.file:
+    src: /etc/apparmor.d/wg-quick
+    dest: /etc/apparmor.d/disable/wg-quick
+    state: link
+    force: true
+    follow: false
+  notify: Unload wg-quick AppArmor profile

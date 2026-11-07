@@ -2,3 +2,7 @@
 - name: Reload multipathd
   ansible.builtin.shell: multipathd reconfigure && multipath -F
   changed_when: true
+
+- name: Unload wg-quick AppArmor profile
+  ansible.builtin.shell: apparmor_parser -R /etc/apparmor.d/wg-quick 2>/dev/null || true
+  changed_when: true
